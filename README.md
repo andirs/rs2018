@@ -1,1 +1,6 @@
 # rs2018
+## Model
+Run `src/rnn_skip.py`
+
+## Preprocessing
+Run `generate_sequences.py`
