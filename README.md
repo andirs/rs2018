@@ -3,4 +3,4 @@
 Run `src/rnn_skip.py`
 
 ## Preprocessing
-Run `generate_sequences.py`
+Run `src/generate_sequences.py`
