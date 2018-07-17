@@ -45,7 +45,7 @@ seq_length = 50  # how long are training sequences
 n_batch_size = 18  # how many sequences per batch
 n_layers = 2  # amount of lstm layers
 epochs = 1000  # epochs to train on
-training = True  # is training active - if not, recommendation process starts / continues
+training = False  # is training active - if not, recommendation process starts / continues
 save_steps = 5000  # after how many steps should the progress be saved
 latent_size = 128  # latent size of LSTM and embedding layer
 skips = 5  # how many skips in between sequences 
@@ -491,7 +491,9 @@ def main():
         if os.path.exists(os.path.join(full_model_path, 'checkpoint')):
             saver.restore(sess, tf.train.latest_checkpoint(full_model_path))
 
-        num_playlists = len(all_challenge_playlists)
+        num_playlists = 0
+        for k in all_challenge_playlists:
+            num_playlists += len(all_challenge_playlists[k])
 
         print('Recommending tracks for {:,} playlists...'.format(num_playlists))
 
@@ -506,7 +508,7 @@ def main():
                 reco_store = []
 
                 try:
-                    reco_per_playlist = pred_model.recommend(sess, playlist['tracks'], int2track, track2int, n=600)
+                    reco_per_playlist = pred_model.recommend(sess, playlist['seed'], int2track, track2int, n=600)
                     if not reco_per_playlist:
                         print('Something went wrong with playlist {}'.format(playlist['pid']))
                         continue
@@ -529,7 +531,7 @@ def main():
                         num_playlists,
                         np.mean(avg_time)))
 
-                write_recommendations_to_file(challenge_track, team_name, contact_info, pid, recos, fname)
+                write_recommendations_to_file(challenge_track, team_name, contact_info, playlist['pid'], reco_per_playlist, result_fname)
                 
                 with open(result_fname, 'a') as f:
                     f.write(str(playlist['pid']) + ', ')
