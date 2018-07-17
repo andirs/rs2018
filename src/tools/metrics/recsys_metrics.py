@@ -160,7 +160,7 @@ def evaluate(pred_set, test_set, exclude_cold=False):
     """
     result_dict = {}
     for key in test_set.keys():
-        if exclude_cold and key == '0':
+        if exclude_cold and key == 0 or key not in pred_set:
             continue
         result_dict[key] = {}
         all_r_precs = []
@@ -198,10 +198,10 @@ def print_results(result_dict):
     sorted_keys = sorted([int(x) for x in result_dict.keys()])
     for k in sorted_keys:
         print ('{:<20}{:<20.4f}{:<20.4f}{:<20.4f}{:<20.4f}'.format(
-            k, result_dict[str(k)]['r_precision'], 
-            result_dict[str(k)]['ndcg'], 
-            result_dict[str(k)]['rsc'],
-            result_dict[str(k)]['recall']))
+            k, result_dict[k]['r_precision'], 
+            result_dict[k]['ndcg'], 
+            result_dict[k]['rsc'],
+            result_dict[k]['recall']))
 
 
 def main():
