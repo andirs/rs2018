@@ -4,6 +4,8 @@ normalized discounted cumulative gain, recommend songs count and recall.
 """
 
 import numpy as np
+from collections import OrderedDict
+from collections import namedtuple
 
 def r_precision(ground_truth, prediction):
     """
@@ -43,104 +45,88 @@ def get_relevance(ground_truth, item):
         return 1
     return 0
 
-def dcg(ground_truth, prediction):
-    """
-    Discounted cumulative gain (DCG) measures the ranking quality of the recommended tracks.
-    DCG increases when relevant tracks are placed higher in the list. 
 
-    Parameters:
-    ------------
-    ground_truth: list of elements representing relevant recommendations. Usually a list of elements that have been hidden from a particular playlist.
-    prediction: list of predictions a given algorithm returns.
-    
+# dcg and ndcg as per RcsysChallengeTool
+# https://github.com/plamere/RecsysChallengeTools/blob/master/metrics.py
+def dcg(relevant_elements, retrieved_elements, k=500, *args, **kwargs):
+    """Compute the Discounted Cumulative Gain.
+    Rewards elements being retrieved in descending order of relevance.
+    \[ DCG = rel_1 + \sum_{i=2}^{|R|} \frac{rel_i}{\log_2(i + 1)} \]
+    Args:
+        retrieved_elements (list): List of retrieved elements
+        relevant_elements (list): List of relevant elements
+        k (int): 1-based index of the maximum element in retrieved_elements
+        taken in the computation
+    Note: The vector `retrieved_elements` is truncated at first, THEN
+    deduplication is done, keeping only the first occurence of each element.
     Returns:
-    ------------
-    relevance: float representing the relevance metric for a given playlist prediction
+        DCG value
     """
-    relevance = None
-    for idx, track in enumerate(prediction):
-        if not relevance:
-            relevance = get_relevance(ground_truth, track)
-        else:
-            relevance += get_relevance(ground_truth, track) / float(
-                np.log2(idx + 1))
-    return relevance
-
-
-def idcg(ground_truth, prediction):
-    """
-    Maximum (ideal) discounted cumulative gain measure 
-    for a prediction set. The ideal DCG simulates a situation
-    in which the recommended tracks are perfectly ranked.
-
-    Parameters:
-    ------------
-    ground_truth: list, elements representing relevant recommendations. Usually a list of elements that have been hidden from a particular playlist.
-    prediction: list, predictions a given algorithm returns.
-
-    Returns:
-    ------------
-    IDCG: float, ideal discounted cumulative gain
-    """
-    relevance = None
-    idx = 0
-    for track in set(ground_truth).intersection(set(prediction)):
-        idx += 1
-        if not relevance:
-            relevance = 1
-        else:
-            relevance += 1 / float(np.log2(idx))
-    return relevance
-
-
-def ndcg(ground_truth, prediction):
-    """
-    Normalized discounted cumulative gain (NDCG). 
-
-    > NDCG = DCG / IDCG
-
-    Parameters:
-    ------------
-    ground_truth: list of elements representing relevant recommendations. Usually a list of elements that have been hidden from a particular playlist.
-    prediction: list of predictions a given algorithm returns.
-    
-    Returns:
-    ------------
-    NDCG: float - discounted cumulative gain given the ideal discounted cumulative gain
-    
-    """
-    idcg_val = idcg(ground_truth, prediction)
-    if idcg_val and idcg_val > 0.0:
-        return dcg(ground_truth, prediction) / float(
-            idcg_val)
-    else:
+    retrieved_elements = __get_unique(retrieved_elements[:k])
+    relevant_elements = __get_unique(relevant_elements)
+    if len(retrieved_elements) == 0 or len(relevant_elements) == 0:
         return 0.0
+    # Computes an ordered vector of 1.0 and 0.0
+    score = [float(el in relevant_elements) for el in retrieved_elements]
+    # return score[0] + np.sum(score[1:] / np.log2(
+    #     1 + np.arange(2, len(score) + 1)))
+    return np.sum(score / np.log2(1 + np.arange(1, len(score) + 1)))
 
 
-def rsc(ground_truth, prediction):
-    """
-    Recommended Songs is a Spotify feature that, given a set of 
-    tracks in a playlist, recommends 10 tracks to add to the playlist. 
-    The list can be refreshed to produce 10 more tracks. 
-    Recommended Songs clicks is the number of refreshes 
-    needed before a relevant track is encountered
-    
-    Parameters:
-    ------------
-    ground_truth: list of elements representing relevant recommendations. Usually a list of elements that have been hidden from a particular playlist.
-    prediction: list of predictions a given algorithm returns.
-    
+def ndcg(relevant_elements, retrieved_elements, k=500, *args, **kwargs):
+    r"""Compute the Normalized Discounted Cumulative Gain.
+    Rewards elements being retrieved in descending order of relevance.
+    The metric is determined by calculating the DCG and dividing it by the
+    ideal or optimal DCG in the case that all recommended tracks are relevant.
+    Note:
+    The ideal DCG or IDCG is on our case equal to:
+    \[ IDCG = 1+\sum_{i=2}^{min(\left| G \right|, k)}\frac{1}{\log_2(i +1)}\]
+    If the size of the set intersection of \( G \) and \( R \), is empty, then
+    the IDCG is equal to 0. The NDCG metric is now calculated as:
+    \[ NDCG = \frac{DCG}{IDCG + \delta} \]
+    with \( \delta \) a (very) small constant.
+    The vector `retrieved_elements` is truncated at first, THEN
+    deduplication is done, keeping only the first occurence of each element.
+    Args:
+        retrieved_elements (list): List of retrieved elements
+        relevant_elements (list): List of relevant elements
+        k (int): 1-based index of the maximum element in retrieved_elements
+        taken in the computation
     Returns:
-    ------------
-    counter: amount of clicks needed for the first relevant song to appear
+        NDCG value
     """
-    counter = 0
-    for idx, track in enumerate(prediction):
-        if idx % 10 == 0:
-            counter += 1
-        if track in ground_truth:
-            return counter
-    return counter + 1
+
+    # TODO: When https://github.com/scikit-learn/scikit-learn/pull/9951 is
+    # merged...
+    idcg = dcg(
+        relevant_elements, relevant_elements, min(k, len(relevant_elements)))
+    if idcg == 0:
+        raise ValueError("relevent_elements is empty, the metric is"
+                         "not defined")
+    true_dcg = dcg(relevant_elements, retrieved_elements, k)
+    return true_dcg / idcg
+
+
+def __get_unique(original_list):
+    """Get only unique values of a list but keep the order of the first
+    occurence of each element
+    """
+    return list(OrderedDict.fromkeys(original_list))
+
+
+# playlist extender clicks
+def rsc(targets, predictions, max_n_predictions=500):
+    # Assumes predictions are sorted by relevance
+    # First, cap the number of predictions
+    predictions = predictions[:max_n_predictions]
+
+    # Calculate metric
+    i = set(predictions).intersection(set(targets))
+    for index, t in enumerate(predictions):
+        for track in i:
+            if t == track:
+                return float(int(index / 10))
+    return float(max_n_predictions / 10.0 + 1)
 
 
 def recall(ground_truth, prediction):

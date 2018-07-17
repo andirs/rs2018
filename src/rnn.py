@@ -2,14 +2,14 @@ import math
 import numpy as np
 import tensorflow as tf
 import time
-from copy import deepcopy
-from keras.utils import to_categorical
 import os
 import sys
 sys.path.append('../')
-from collections import Counter
-from tools.io import load_obj, store_obj
 
+from collections import Counter
+from copy import deepcopy
+from keras.utils import to_categorical
+from tools.io import extract_pids, load_obj, store_obj, write_recommendations_to_file
 
 print ('#' * 80)
 print ('Track2Seq Model')
@@ -19,18 +19,20 @@ print ('#' * 80)
 ############################## SETUP #############################
 ##################################################################
 
-data_dir = 'model/'  # where model steps are stored
-model_path = 'track2seq_model'  # name of model
-full_model_dir = os.path.join(data_dir, model_path)
+t2s_config = load_obj('../config.json', 'json')
+input_folder = t2s_config['RESULTS_FOLDER']  # data of pre-processing steps
+model_folder = t2s_config['T2S_MODEL_FOLDER']  # where model checkpoints are stored
+model_name = t2s_config['T2S_MODEL_NAME']  # name of model
+full_model_path = os.path.join(model_folder, model_name)
 
 # generate folder
-if not os.path.exists(full_model_dir):
-    print ('Created {} ...'.format(full_model_dir))
-    os.makedirs(full_model_dir)
+if not os.path.exists(full_model_path):
+    print ('Created {} ...'.format(full_model_path))
+    os.makedirs(full_model_path)
 
 print ('Loading data ...')
-data = load_obj('../../workspace/final_submission/results/id_sequence.pckl', 'pickle')
-vocab = load_obj('../../workspace/final_submission/results/track2id.pckl', 'pickle')
+data = load_obj(os.path.join(input_folder, 'id_sequence.pckl'), 'pickle')
+vocab = load_obj(os.path.join(input_folder, 'track2id.pckl'), 'pickle')
 track2int = vocab
 int2track = {v:k for k,v in track2int.items()}
 print ('There are {} tokens in the vocabulary'.format(len(int2track)))
@@ -52,7 +54,7 @@ skips = 5  # how many skips in between sequences
 ########################## TRAINING SETUP ########################
 ##################################################################
 
-evaluation_set_fname = '../../workspace/final_submission/filled_dev_playlists_dict.pckl'
+evaluation_set_fname = os.path.join(input_folder,'filled_dev_playlists_dict.pckl')
 results_folder = 'recommendations/'
 result_fname = os.path.join(results_folder, 'seq2track_recommendations.csv')
 
@@ -60,6 +62,14 @@ if not os.path.exists(results_folder):
     print('Creating results folder: {}'.format(results_folder))
     os.makedirs(results_folder)
 
+
+##################################################################
+####################### RECOMMENDATION SETUP #####################
+##################################################################
+
+challenge_track = t2s_config['TEAM_TRACK']
+team_name = t2s_config['TEAM_NAME']
+contact_info = t2s_config['TEAM_CONTACT']
 
 ##################################################################
 ############################# METHODS ############################
@@ -317,7 +327,6 @@ class Seq2Track(object):
         valid_sequence = [x for x in start_sequence if x in track2int]
 
         for n in range(n):
-            #print (start_sequence)
             track = np.random.choice([x for x in start_sequence if x in track2int], 1)[0]
             x = np.zeros((1, 1))
             x[0, 0] = track2int[track]
@@ -329,7 +338,7 @@ class Seq2Track(object):
                 })
             track_int = artist_search(probabilities[0], candidates, int2track, start_sequence, c_count)
             
-            # Semi-guided precition
+            # Semi-guided prediction
             if truth_flag:
                 truth_flag = False
                 if truth_pointer == len(valid_sequence):
@@ -367,7 +376,7 @@ def main():
         n_batch_size=n_batch_size, 
         n_vocab=n_vocab, 
         step=skips,
-        store_folder=os.path.join(full_model_dir, 'step_point'))
+        store_folder=os.path.join(full_model_path, 'step_point'))
     
     current_epoch = bg.epoch_counter
 
@@ -396,8 +405,8 @@ def main():
     sess.run(init_operation)
 
     # check if a model exists, if so - load it
-    if os.path.exists(os.path.join(full_model_dir, 'checkpoint')):
-        saver.restore(sess, tf.train.latest_checkpoint(full_model_dir))
+    if os.path.exists(os.path.join(full_model_path, 'checkpoint')):
+        saver.restore(sess, tf.train.latest_checkpoint(full_model_path))
 
     # training routine
     if training:
@@ -462,45 +471,29 @@ def main():
                     bg.store_step_counter(step)
                     bg.store_epoch_counter(e)
 
-                    model_file_name = os.path.join(full_model_dir, 'model')
+                    model_file_name = os.path.join(full_model_path, 'model')
                     saver.save(sess, model_file_name, global_step = step)
                     print('Model Saved To: {}'.format(model_file_name))
         # if epoch is over
         bg.store_epoch_counter(e)
         bg.current_idx = 0
         bg.store_step_counter(0)
-        model_file_name = os.path.join(full_model_dir, 'model')
+        model_file_name = os.path.join(full_model_path, 'model')
         saver.save(sess, model_file_name, global_step = step)
         print('Model Saved To: {}'.format(model_file_name))
     
     else:
-        def extract_pids(fname):
-            pids = []
-            with open(fname, 'r') as f:
-                for line in f.readlines()[1:]:
-                    if line == '\n':
-                        continue
-                    if ',' in line:
-                        pids.append(int(line.split(',')[0]))
-            return pids
-
+        pid_collection = extract_pids(result_fname)
         all_challenge_playlists = load_obj(challenge_set_fname, 'pickle')
 
         init = tf.global_variables_initializer()
         sess.run(init)
-        if os.path.exists(os.path.join(full_model_dir, 'checkpoint')):
-            saver.restore(sess, tf.train.latest_checkpoint(full_model_dir))
+        if os.path.exists(os.path.join(full_model_path, 'checkpoint')):
+            saver.restore(sess, tf.train.latest_checkpoint(full_model_path))
 
         num_playlists = len(all_challenge_playlists)
 
         print('Recommending tracks for {:,} playlists...'.format(num_playlists))
-
-        if not os.path.exists(result_fname):
-            with open(result_fname, 'a') as f:
-                f.write('team_info,creative,HitsHitsHits!,andreas.rubin-schwarz@dfki.de\n')
-            pid_collection = []
-        else:
-            pid_collection = extract_pids(result_fname)
 
         avg_time = []
         for k in all_challenge_playlists:
@@ -535,6 +528,9 @@ def main():
                         ix,
                         num_playlists,
                         np.mean(avg_time)))
+
+                write_recommendations_to_file(challenge_track, team_name, contact_info, pid, recos, fname)
+                
                 with open(result_fname, 'a') as f:
                     f.write(str(playlist['pid']) + ', ')
                     f.write(', '.join([x for x in reco_per_playlist]))

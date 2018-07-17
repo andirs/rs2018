@@ -3,6 +3,34 @@ import pickle
 import json
 import pandas as pd
 
+def extract_pids(fname):
+    """
+    Helper function to read recommendation pids from
+    text file.
+    """
+    pids = []
+    if not os.path.exists(fname):
+        return pids
+    with open(fname, 'r') as f:
+        for line in f.readlines()[1:]:
+            if line == '\n':
+                continue
+            if ',' in line:
+                pids.append(int(line.split(',')[0]))
+    return pids
+
+def write_recommendations_to_file(challenge_track, team_name, contact_info, pid, recos, fname):
+    # check if file already exists 
+    if not os.path.exists(fname):
+        with open(fname, 'a') as f:
+            f.write('team_info,{},{},{}\n'.format(challenge_track, team_name, contact_info))
+
+    with open(fname, 'a') as f:
+        f.write(str(pid) + ', ')
+        f.write(', '.join([x for x in recos]))
+        f.write('\n\n')
+
+
 def load_obj(fname, dtype='json'):
     """
     Object loader function to simplify code.
@@ -31,6 +59,7 @@ def load_obj(fname, dtype='json'):
             raise ValueError('Data type {} does not exist. Use json, pickle or pandas'.format(dtype))
         return return_obj
 
+
 def store_obj(obj, fname, dtype='pickle'):
     """
     Object storing function to simplify code.
@@ -53,8 +82,9 @@ def store_obj(obj, fname, dtype='pickle'):
             with open(fname, 'wb') as f:
                 pickle.dump(obj, f)
         elif dtype == 'json':
-            with open(fname, 'rb') as f:
+            with open(fname, 'wb') as f:
                 json.dump(obj, f)
+
 
 def load_challenge_set(fname='../../../workspace/challenge_data/challenge_set.json'):
     return load_obj(fname, 'json')

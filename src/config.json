@@ -1,0 +1,13 @@
+{
+    "TEAM_NAME": "HitsHitsHits!",
+    "TEAM_TRACK": "CREATIVE",
+    "TEAM_CONTACT": "andreas.rubin-schwarz@dfki.de",
+    "PLAYLIST_FOLDER": "../../data",
+    "RESULTS_FOLDER": "results/",
+    "RANDOM_STATE": 2018,
+    "W2V_BINARY_FNAME": "w2v/GoogleNews-vectors-negative300.bin.gz",
+    "W2V_FNAME": "w2v/",
+    "T2S_MODEL_NAME": "track2seq_model",
+    "T2S_MODEL_FOLDER": "model/",
+    "RECOMMENDATION_FOLDER": "recommendations/"
+}
