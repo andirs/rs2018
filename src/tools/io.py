@@ -19,16 +19,20 @@ def extract_pids(fname):
                 pids.append(int(line.split(',')[0]))
     return pids
 
+
+def write_to_file(pid, items, fname):
+    with open(fname, 'a') as f:
+        f.write(str(pid) + ', ')
+        f.write(', '.join([x for x in items]))
+        f.write('\n\n')
+
+
 def write_recommendations_to_file(challenge_track, team_name, contact_info, pid, recos, fname):
     # check if file already exists 
     if not os.path.exists(fname):
         with open(fname, 'a') as f:
             f.write('team_info,{},{},{}\n'.format(challenge_track, team_name, contact_info))
-
-    with open(fname, 'a') as f:
-        f.write(str(pid) + ', ')
-        f.write(', '.join([x for x in recos]))
-        f.write('\n\n')
+    write_to_file(pid, recos, fname)
 
 
 def load_obj(fname, dtype='json'):

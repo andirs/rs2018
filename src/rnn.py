@@ -19,7 +19,7 @@ print ('#' * 80)
 ############################## SETUP #############################
 ##################################################################
 
-t2s_config = load_obj('../config.json', 'json')
+t2s_config = load_obj('config.json', 'json')
 input_folder = t2s_config['RESULTS_FOLDER']  # data of pre-processing steps
 model_folder = t2s_config['T2S_MODEL_FOLDER']  # where model checkpoints are stored
 model_name = t2s_config['T2S_MODEL_NAME']  # name of model
@@ -45,7 +45,7 @@ seq_length = 50  # how long are training sequences
 n_batch_size = 18  # how many sequences per batch
 n_layers = 2  # amount of lstm layers
 epochs = 1000  # epochs to train on
-training = False  # is training active - if not, recommendation process starts / continues
+training = True  # is training active - if not, recommendation process starts / continues
 save_steps = 5000  # after how many steps should the progress be saved
 latent_size = 128  # latent size of LSTM and embedding layer
 skips = 5  # how many skips in between sequences 
@@ -484,7 +484,7 @@ def main():
     
     else:
         pid_collection = extract_pids(result_fname)
-        all_challenge_playlists = load_obj(challenge_set_fname, 'pickle')
+        all_challenge_playlists = load_obj(evaluation_set_fname, 'pickle')
 
         init = tf.global_variables_initializer()
         sess.run(init)

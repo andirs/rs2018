@@ -4,8 +4,8 @@ import os
 import string
 import pandas as pd
 
-
-from tools.io import load_obj, store_obj
+from collections import Counter
+from tools.io import load_obj, store_obj, extract_pids, write_to_file
 
 print ('#' * 80)
 print ('Track2Seq CWVA Seeds')
@@ -149,6 +149,9 @@ def get_correspondant_list(pid_to_name, seed_k, results_folder, recompute):
     probs_fname = os.path.join(results_folder, 'w2v_dev_correspondant_list_probas.pckl')
 
     if recompute:
+        correspondant_list_tmp_fname = 'cwva_dev_correspondant_list.csv'
+        correspondant_probs_tmp_fname = 'cwva_dev_correspondant_probs.csv'
+
         correspondant_list = {}
         correspondant_list_probs = {}
         for ix, pid in enumerate(pid_to_name):
@@ -159,6 +162,8 @@ def get_correspondant_list(pid_to_name, seed_k, results_folder, recompute):
                 playlists, probabilities = get_similar_playlists(pid_to_name[pid], seed_k)
                 correspondant_list[pid] = playlists
                 correspondant_list_probs[pid] = probabilities
+                #write_to_file(pid, playlists, correspondant_list_tmp_fname)
+                #write_to_file(pid, probabilities, correspondant_probs_tmp_fname)
             except KeyboardInterrupt:
                 break
             except:
