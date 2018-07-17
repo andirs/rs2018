@@ -52,13 +52,18 @@ skips = 5  # how many skips in between sequences
 ########################## TRAINING SETUP ########################
 ##################################################################
 
-evaluation_set_fname = 'results/dev_set.json'
+evaluation_set_fname = '../../workspace/final_submission/filled_dev_playlists_dict.pckl'
 results_folder = 'recommendations/'
 result_fname = os.path.join(results_folder, 'seq2track_recommendations.csv')
 
 if not os.path.exists(results_folder):
     print('Creating results folder: {}'.format(results_folder))
     os.makedirs(results_folder)
+
+
+##################################################################
+############################# METHODS ############################
+##################################################################
 
 
 class DeviceCellWrapper(tf.contrib.rnn.RNNCell):
@@ -139,6 +144,10 @@ class BatchGenerator(object):
                 self.current_idx += self.step
             yield x, y
 
+
+##################################################################
+############################## MODEL #############################
+##################################################################
 
 class Seq2Track(object):
 
@@ -475,7 +484,7 @@ def main():
                         pids.append(int(line.split(',')[0]))
             return pids
 
-        all_challenge_playlists = load_obj(challenge_set_fname, 'json')
+        all_challenge_playlists = load_obj(challenge_set_fname, 'pickle')
 
         init = tf.global_variables_initializer()
         sess.run(init)
@@ -494,41 +503,42 @@ def main():
             pid_collection = extract_pids(result_fname)
 
         avg_time = []
-        for ix, playlist in enumerate(all_challenge_playlists):
-            start_wall_time = time.time()
+        for k in all_challenge_playlists:
+            for ix, playlist in enumerate(all_challenge_playlists[k]):
+                start_wall_time = time.time()
 
-            if playlist['pid'] in pid_collection:
-                continue
-            reco_per_playlist = []
-            reco_store = []
-
-            try:
-                reco_per_playlist = pred_model.recommend(sess, playlist['tracks'], int2track, track2int, n=600)
-                if not reco_per_playlist:
-                    print('Something went wrong with playlist {}'.format(playlist['pid']))
+                if playlist['pid'] in pid_collection:
                     continue
-            except KeyboardInterrupt:
-                sys.exit()
-            except Exception as err:
-                print('Something went wrong with playlist {} (Error: {})'.format(playlist['pid'], err))
-                continue
+                reco_per_playlist = []
+                reco_store = []
 
-            # store recommendations
-            reco_per_playlist = reco_per_playlist[:500]
-            pid_collection.append(playlist['pid'])
-            time_elapsed = time.time() - start_wall_time
-            avg_time.append(time_elapsed)
+                try:
+                    reco_per_playlist = pred_model.recommend(sess, playlist['tracks'], int2track, track2int, n=600)
+                    if not reco_per_playlist:
+                        print('Something went wrong with playlist {}'.format(playlist['pid']))
+                        continue
+                except KeyboardInterrupt:
+                    sys.exit()
+                except Exception as err:
+                    print('Something went wrong with playlist {} (Error: {})'.format(playlist['pid'], err))
+                    continue
 
-            print(
-                'Recommended {} songs ({} / {}). Avg time per playlist: {:.2f} seconds.'.format(
-                    len(reco_per_playlist),
-                    ix,
-                    num_playlists,
-                    np.mean(avg_time)))
-            with open(result_fname, 'a') as f:
-                f.write(str(playlist['pid']) + ', ')
-                f.write(', '.join([x for x in reco_per_playlist]))
-                f.write('\n\n')
+                # store recommendations
+                reco_per_playlist = reco_per_playlist[:500]
+                pid_collection.append(playlist['pid'])
+                time_elapsed = time.time() - start_wall_time
+                avg_time.append(time_elapsed)
+
+                print(
+                    'Recommended {} songs ({} / {}). Avg time per playlist: {:.2f} seconds.'.format(
+                        len(reco_per_playlist),
+                        ix,
+                        num_playlists,
+                        np.mean(avg_time)))
+                with open(result_fname, 'a') as f:
+                    f.write(str(playlist['pid']) + ', ')
+                    f.write(', '.join([x for x in reco_per_playlist]))
+                    f.write('\n\n')
 
 
 if __name__ == "__main__":

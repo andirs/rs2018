@@ -24,15 +24,15 @@ print ('#' * 80)
 ############################## SETUP #############################
 ##################################################################
 
-PLAYLIST_FOLDER = 'mpd/data'  # set folder of playlist information
-RESULTS_FOLDER = 'results/'  # all information will be stored here
+PLAYLIST_FOLDER = '../../workspace/data'  # set folder of playlist information
+RESULTS_FOLDER = '../../workspace/final_submission/results/'  # all information will be stored here
 recompute = True
 random_state = 2018
 np.random.seed(random_state)
 
 # download `GoogleNews-vectors-negative300.bin.gz` from 
 # https://github.com/mmihaltz/word2vec-GoogleNews-vectors
-w2v_fname = 'w2v/GoogleNews-vectors-negative300.bin.gz'
+w2v_fname = '../../workspace/gw2v/GoogleNews-vectors-negative300.bin.gz'
 
 
 ##################################################################
@@ -61,7 +61,7 @@ def load_inclusion_tracks(dev_playlist_dict, test_playlist_dict):
 
 def _build_vocabulary(track_sequence):
 
-    print ('\t... creating dictionaries ...')
+    print ('Creating dictionaries ...')
     counter = collections.Counter(track_sequence)
     count_pairs = counter.most_common()
     words, _ = list(zip(*count_pairs))
@@ -78,14 +78,14 @@ def _filter_sequence(sequence, track2id, min_val, challenge_tracks):
             counter[t] += 1
         else:
             counter[t] = 1
-    print ('\t... Finished counting ...')
+    print ('Finished counting ...')
     
     # create filter dict
     new_track2id = {}
     n = len(counter)
     for ix, track in enumerate(counter):
         if ix % 1000 == 0:
-            print ('{} / {}'.format(ix, n))
+            print ('{} / {}'.format(ix, n), end='\r')
         if counter[track] > min_val or track in challenge_tracks:
             new_track2id[track] = counter[track]
     
@@ -137,12 +137,12 @@ class Statistician(object):
         
         if not os.path.exists(track_popularity_dict_fname) or recompute:
             track_popularity_dict = {}
-            total_files = len(os.listdir(self.playlist_folder))
+            total_files = len(self.all_playlist_filenames)
             counter = 0
             for playlist_file in self.all_playlist_filenames:
                 counter += 1
                 print ("Working on slice {} ({:.2f} %) (File Name:  {} || Total Slices: {})".format(
-                    counter, (counter / total_files) * 100, playlist_file, total_files), end='\r                  ')
+                    counter, (counter / total_files) * 100, playlist_file, total_files), end='\r')
                 playlist_collection = load_obj(playlist_file, 'json')
                 for playlist in playlist_collection['playlists']:
 
@@ -551,6 +551,8 @@ class Levenshtein(object):
             for i in range(100):
                 tmp_pid = playlist_df[playlist_df.index == tmp_pids[i]]['pid'].values[0]
                 tmp_tracks = all_playlists_dict[tmp_pid]['tracks']
+                if track_uri == '<eos>':
+                    continue
                 for track_uri in tmp_tracks:
                     if track_uri not in candidate_list:
                         candidate_list[track_uri] = 0
@@ -565,6 +567,8 @@ class Levenshtein(object):
                 tmp_pid = playlist_df[playlist_df.index == tmp_pids[i]]['pid'].values[0]
                 tmp_tracks = all_playlists_dict[tmp_pid]['tracks']
                 for track_uri in tmp_tracks:
+                    if track_uri == '<eos>':
+                        continue
                     if track_uri not in candidate_list:
                         candidate_list[track_uri] = 0
                         candidate_counts += 1
@@ -590,8 +594,8 @@ class Levenshtein(object):
             seed_set = {}
             for idx, playl in enumerate(zero_seed_playlists):
                 playlist_name = Levenshtein.pre_process(playl['name'])
-                print ('\t... retrieving levenshtein similarities for \'{}\' ({:.2f} %)'.format(
-                    playlist_name, ((idx + 1) / len(zero_seed_playlists)) * 100), end='\r            ')
+                print ('Retrieving levenshtein similarities for \'{}\' ({:.2f} %)'.format(
+                    playlist_name, ((idx + 1) / len(zero_seed_playlists)) * 100), end='\r')
                 return_dict = {}
                 return_dict['counter'] = 0
                 return_dict['lowest'] = []
@@ -726,8 +730,8 @@ def get_correspondant_list(pid_to_name, seed_k, results_folder, recompute):
         correspondant_list_probs = {}
         for ix, pid in enumerate(pid_to_name):
             
-            print ('\t ... retrieving CWVA for \'{}\' ({:.2f} %)'.format(
-                pid_to_name[pid], ((ix+1) / len(pid_to_name)) * 100 ), end='\r            ')
+            print ('Retrieving CWVA for \'{}\' ({:.2f} %)'.format(
+                pid_to_name[pid], ((ix+1) / len(pid_to_name)) * 100 ), end='\r')
             try:
                 playlists, probabilities = get_similar_playlists(pid_to_name[pid], seed_k)
                 correspondant_list[pid] = playlists
@@ -735,7 +739,7 @@ def get_correspondant_list(pid_to_name, seed_k, results_folder, recompute):
             except KeyboardInterrupt:
                 break
             except:
-                print ('\t ... something went wrong with playlist: \'{}\' (pid: {})'.format(pid_to_name[pid], pid))
+                print ('Something went wrong with playlist: \'{}\' (pid: {})'.format(pid_to_name[pid], pid))
         store_obj(correspondant_list, list_fname, 'pickle')
         store_obj(correspondant_list_probs, probs_fname, 'pickle')
     else:
@@ -752,6 +756,8 @@ def get_seed_tracks_probs(old_pid, seed_pid_list, seed_pid_probs, all_playlists_
     for pid, prob in zip(seed_pid_list, seed_pid_probs):
         try:
             for track_uri in all_playlists_dict[pid]['tracks']:
+                if track_uri == '<eos>':
+                    continue
                 if track_uri not in candidate_list:
                     candidate_list[track_uri] = prob
                 else:
@@ -770,7 +776,6 @@ def get_seed_tracks_probs(old_pid, seed_pid_list, seed_pid_probs, all_playlists_
 
 if __name__ == "__main__":
 
-    # NO CHANGES NEEDED
     W2V_FOLDER = os.path.join(RESULTS_FOLDER, 'w2v/')
     if not os.path.exists(RESULTS_FOLDER):
         os.makedirs(RESULTS_FOLDER)
@@ -779,15 +784,14 @@ if __name__ == "__main__":
     if not os.path.exists(W2V_FOLDER):
         os.makedirs(W2V_FOLDER)
 
-    # dicts
-    # first sample
+    # PRE PROCESSING
     statistician = Statistician(PLAYLIST_FOLDER, RESULTS_FOLDER)
 
     print ('Generating popularity dict ...')
     track_popularity_dict = statistician.create_track_popularity_dict(recompute=recompute)
     # generate sampling information
     # stratification on median track popularity, number of tracks and modified at
-    print ('Generating playlist DataFrame inclusive aggregate features ...')
+    print ('Generating playlist DataFrame inclusive aggregate features ...', end='\r\n')
     playlist_df = statistician.get_playlist_df(recompute=recompute)
 
     # binning for stratification process
@@ -798,7 +802,6 @@ if __name__ == "__main__":
     x_train_pids, x_dev_pids, x_test_pids = split_playlist_df(
         playlist_df, random_state, statistician.all_playlists_dict, RESULTS_FOLDER, recompute=recompute)
 
-    # TODO: Generate Dev & Test Set
     print ('Bucketing dev & test playlists ...')
     dev_playlist_dict, test_playlist_dict = bucketing_eval_playlists(
         x_dev_pids, x_test_pids, statistician.all_playlists_dict, RESULTS_FOLDER, recompute=recompute)
@@ -838,7 +841,6 @@ if __name__ == "__main__":
         track_sequence = load_obj(id_sequence_fname, 'pickle')
         track2id = load_obj(track2id_fname, 'pickle')
 
-
     # LEVENSHTEIN
     print ('Computing Levenshtein distance ...')
     train_playlist_df = playlist_df[playlist_df.pid.isin(x_train_pids)].copy()
@@ -847,15 +849,15 @@ if __name__ == "__main__":
     all_playlist_names = train_playlist_df['name'].apply(Levenshtein.pre_process)
     
     zero_dev = dev_playlist_dict[0]
-    zero_test = test_playlist_dict[0]
+    #zero_test = test_playlist_dict[0]
     
     # iterate over first 0-seed playlists
     dev_leve_seed_dict = Levenshtein.generate_levenshtein_seed_dict(
         zero_dev, all_playlist_names, statistician.all_playlists_dict, 
         train_playlist_df, RESULTS_FOLDER, 'dev_leve_seed_dict.pckl', recompute)
-    test_leve_seed_dict = Levenshtein.generate_levenshtein_seed_dict(
-        zero_test, all_playlist_names, statistician.all_playlists_dict, 
-        train_playlist_df, RESULTS_FOLDER, 'test_leve_seed_dict.pckl', recompute)
+    #test_leve_seed_dict = Levenshtein.generate_levenshtein_seed_dict(
+    #    zero_test, all_playlist_names, statistician.all_playlists_dict, 
+    #    train_playlist_df, RESULTS_FOLDER, 'test_leve_seed_dict.pckl', recompute)
 
     # WORD2VEC - CWVA
     print ('Loading word2vec embeddings ...')
@@ -868,7 +870,7 @@ if __name__ == "__main__":
                 'Download pre-computed word embeddings from https://github.com/mmihaltz/word2vec-GoogleNews-vectors')
         model = gensim.models.KeyedVectors.load_word2vec_format(w2v_fname, binary=True)
 
-        print ('\t... calculating average tokens for playlist titles ...')
+        print ('Calculating average tokens for playlist titles ...')
         df = playlist_df[playlist_df['pid'].isin(x_train_pids)]
     
         return_vecs = {}
@@ -883,46 +885,61 @@ if __name__ == "__main__":
         playlist_title_2_vec = load_obj(playlist_title_2_vec_fname, 'pickle')
         translation_dict = load_obj(translation_dict_fname, 'pickle')
 
-    complete_test_seed_list_fname = os.path.join(W2V_FOLDER, 'complete_test_seed_list.pckl', 'pickle')
-    complete_dev_seed_list_fname = os.path.join(W2V_FOLDER, 'complete_dev_seed_list.pckl', 'pickle')
+    complete_dev_seed_list_fname = os.path.join(W2V_FOLDER, 'complete_dev_seed_list.pckl')
+    #complete_test_seed_list_fname = os.path.join(W2V_FOLDER, 'complete_test_seed_list.pckl')
 
     if recompute:
         dev_pid_to_name = {}
         for dplaylist in zero_dev:
             dev_pid_to_name[dplaylist['pid']] = dplaylist['name']
 
-        test_pid_to_name = {}
-        for dplaylist in zero_test:
-            test_pid_to_name[dplaylist['pid']] = dplaylist['name']
+        #test_pid_to_name = {}
+        #for dplaylist in zero_test:
+        #    test_pid_to_name[dplaylist['pid']] = dplaylist['name']
 
         dev_correspondant_list, dev_correspondant_list_probs = get_correspondant_list(
             dev_pid_to_name, seed_k=100, results_folder=RESULTS_FOLDER, recompute=recompute)
-        test_correspondant_list, test_correspondant_list_probs = get_correspondant_list(
-            test_pid_to_name, seed_k=100, results_folder=RESULTS_FOLDER, recompute=recompute)
 
         # turn playlists into tracks
-        print ('\t... completing dev and test proxis ...')
+        print ('Completing dev and test proxis ...')
         complete_dev_seed_list = {}
         for p in dev_correspondant_list:
             complete_dev_seed_list[p] = get_seed_tracks_probs(
                 p, dev_correspondant_list[p], dev_correspondant_list_probs[p], statistician.all_playlists_dict)
 
-        complete_test_seed_list = {}
-        for p in test_correspondant_list:
-            complete_test_seed_list[p] = get_seed_tracks_probs(
-                p, test_correspondant_list[p], test_correspondant_list_probs[p], statistician.all_playlists_dict)
-
         # if vectors are missing, fill up with levenshtein proxis
         for pid in [x['pid'] for x in zero_dev]:
             if pid not in complete_dev_seed_list:
                 complete_dev_seed_list[pid] = dev_leve_seed_dict[pid]
+        
+        store_obj(complete_dev_seed_list, complete_dev_seed_list_fname, 'pickle')
 
-        for pid in [x['pid'] for x in zero_test]:
-            if pid not in complete_test_seed_list:
-                complete_test_seed_list[pid] = test_leve_seed_dict[pid]
+
+        #test_correspondant_list, test_correspondant_list_probs = get_correspondant_list(
+        #    test_pid_to_name, seed_k=100, results_folder=RESULTS_FOLDER, recompute=recompute)
+
+
+        #complete_test_seed_list = {}
+        #for p in test_correspondant_list:
+        #    complete_test_seed_list[p] = get_seed_tracks_probs(
+        #        p, test_correspondant_list[p], test_correspondant_list_probs[p], statistician.all_playlists_dict)
+
+        #for pid in [x['pid'] for x in zero_test]:
+        #    if pid not in complete_test_seed_list:
+        #        complete_test_seed_list[pid] = test_leve_seed_dict[pid]
 
         store_obj(complete_dev_seed_list, complete_dev_seed_list_fname, 'pickle')
-        store_obj(complete_test_seed_list, complete_test_seed_list_fname, 'pickle')
+        #store_obj(complete_test_seed_list, complete_test_seed_list_fname, 'pickle')
     else:
         complete_dev_seed_list = load_obj(complete_dev_seed_list_fname, 'pickle')
-        complete_test_seed_list = load_obj(complete_test_seed_list_fname, 'pickle')
+        #complete_test_seed_list = load_obj(complete_test_seed_list_fname, 'pickle')
+    if recompute:
+        # add seeds to dev playlists
+        for p in dev_playlist_dict[0]:
+            if p['pid'] in complete_dev_seed_list:
+                p['seed'] = complete_dev_seed_list[p['pid']]
+
+        print ('Stored final dev set in results folder ...')
+        store_obj(dev_playlist_dict, os.path.join(RESULTS_FOLDER, 'filled_dev_playlists_dict.pckl'), 'pickle')
+    else:
+        dev_playlist_dict = load_obj(os.path.join(RESULTS_FOLDER, 'filled_dev_playlists_dict.pckl'), 'pickle')
