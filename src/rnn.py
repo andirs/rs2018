@@ -45,7 +45,7 @@ seq_length = 50  # how long are training sequences
 n_batch_size = 18  # how many sequences per batch
 n_layers = 2  # amount of lstm layers
 epochs = 1000  # epochs to train on
-training = False  # is training active - if not, recommendation process starts / continues
+training = True  # is training active - if not, recommendation process starts / continues
 save_steps = 5000  # after how many steps should the progress be saved
 latent_size = 128  # latent size of LSTM and embedding layer
 skips = 5  # how many skips in between sequences 
@@ -198,7 +198,7 @@ class Seq2Track(object):
         cell = tf.contrib.rnn.LSTMCell(self.latent_size, forget_bias=1.0)  # different size possible?
         
         #devices = ['/gpu:0', '/gpu:1']  # multi gpu layout - amount of devices ==  amount of layers
-        def build_cells(layers, recommendation=recommendation, dropout_prob=.5):
+        def build_cells(layers, recommendation=recommendation, dropout_prob=.6):
             cells = []
             for i in range(layers):
                 cell = tf.contrib.rnn.LSTMCell(self.latent_size, forget_bias=1., state_is_tuple=True)

@@ -8,7 +8,7 @@ All dependencies are in `requirements.txt` and can be installed i.e. through `pi
 The network was designed to work with the Million Playlist Dataset (MPD), official website hosted at https://recsys-challenge.spotify.com. 
 
 ## Preprocessing
-After setting local variables in `src/config.json` pre-processing and training scripts are ready. Make sure to download the [pre-computed word2vec embeddings](https://github.com/mmihaltz/word2vec-GoogleNews-vectors) for step 6) by [Mikolov et al](https://code.google.com/archive/p/word2vec/). Execute the scripts in this order: 
+After setting local variables in `src/config.json` pre-processing and training scripts can be executed. Make sure to download the [pre-computed word2vec embeddings](https://github.com/mmihaltz/word2vec-GoogleNews-vectors) for step 6) by [Mikolov et al](https://code.google.com/archive/p/word2vec/). Run the scripts in following order: 
 
 1) `src/a_generate_sequences.py`
 2) `src/b_generate_levenshtein_seeds.py`
@@ -26,4 +26,4 @@ This will perform the following steps:
 The whole process will take a while to compute and requires sufficient memory as well as disk space. Pre-computed files as well as weights will be made available as well. 
 
 ## Model
-Afterwards you are able to train the model by running `src/rnn.py`
+Afterwards the model can be trained by running `src/rnn.py`
