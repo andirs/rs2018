@@ -75,7 +75,7 @@ ptyprocess==0.5.2
 py==1.5.2
 py4j==0.10.6
 pycparser==2.18
-Pygments==2.2.0
+Pygments==2.7.4
 pyOpenSSL==17.5.0
 pyparsing==2.2.0
 PySocks==1.6.7
